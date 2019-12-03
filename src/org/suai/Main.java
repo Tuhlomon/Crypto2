@@ -16,6 +16,8 @@ public class Main {
             System.out.println("File was encrypted!");
             tf.FileDecrypt("C:\\Users\\Tuhlomon\\Desktop\\crypto\\crypto2_encrypted.jpg", "C:\\Users\\Tuhlomon\\Desktop\\crypto\\crypto2_decrypted.jpg", key);
             System.out.println("File was decrypted!");
+            System.out.println("Zero-to-one ratio is " + Analyzer.calcZeroToOneRatio("C:\\Users\\Tuhlomon\\Desktop\\crypto\\crypto2_encrypted.jpg"));
+            System.out.println("Correlation coefficient is " + Analyzer.calcCorrelation("C:\\Users\\Tuhlomon\\Desktop\\crypto\\crypto2_input.jpg", "C:\\Users\\Tuhlomon\\Desktop\\crypto\\crypto2_encrypted.jpg"));
         }
         catch (Exception e){
             System.out.println(e.getMessage());
