@@ -1,7 +1,6 @@
 package org.suai;
 
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 
 public class Analyzer {
     public static float calcCorrelation(String messageFile, String cipherFile) {
@@ -29,7 +28,7 @@ public class Analyzer {
                 size += 16;
             }
         } catch (Exception e) {
-            System.out.println("Decryption error!" + e.getMessage());
+            System.out.println("Calculation if correlation error!" + e.getMessage());
         }
         return (float)accum/size;
     }

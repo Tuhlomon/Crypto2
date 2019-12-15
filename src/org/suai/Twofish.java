@@ -9,7 +9,6 @@ public final class Twofish {
     private static final int ROUNDS = 16;
     private static final int MAX_ROUNDS = 16; // max # rounds (for allocating subkeys)
 
-    /* Subkey array indices */
     private static final int INPUT_WHITEN = 0;
     private static final int OUTPUT_WHITEN = INPUT_WHITEN + BLOCK_SIZE / 4;
     private static final int ROUND_SUBKEYS = OUTPUT_WHITEN + BLOCK_SIZE / 4; // 2*(# rounds)
@@ -20,9 +19,6 @@ public final class Twofish {
     private static final int SK_BUMP = 0x01010101;
     private static final int SK_ROTL = 9;
 
-    /**
-     * Fixed 8x8 permutation S-boxes
-     */
     private static final byte[][] P = new byte[][]{
             {  // p0
                     (byte) 0xA9, (byte) 0x67, (byte) 0xB3, (byte) 0xE8,
@@ -158,11 +154,6 @@ public final class Twofish {
             }
     };
 
-    /**
-     * Define the fixed p0/p1 permutations used in keyed S-box lookup.
-     * By changing the following constant definitions, the S-boxes will
-     * automatically get changed in the Twofish engine.
-     */
     private static final int P_00 = 1;
     private static final int P_01 = 0;
     private static final int P_02 = 0;
@@ -187,41 +178,22 @@ public final class Twofish {
     private static final int P_33 = P_31 ^ 1;
     private static final int P_34 = 1;
 
-    /**
-     * Primitive polynomial for GF(256)
-     */
     private static final int GF256_FDBK = 0x169;
     private static final int GF256_FDBK_2 = 0x169 / 2;
     private static final int GF256_FDBK_4 = 0x169 / 4;
 
-    /**
-     * MDS matrix
-     */
     private static final int[][] MDS = new int[4][256]; // blank final
 
     private static final int RS_GF_FDBK = 0x14D; // field generator
 
-    /**
-     * data for hexadecimal visualisation.
-     */
-    private static final char[] HEX_DIGITS = {
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-    };
-
-
-// Static code - to intialise the MDS matrix
-//...........................................................................
 
     static {
-        //
-        // precompute the MDS matrix
-        //
         int[] m1 = new int[2];
         int[] mX = new int[2];
         int[] mY = new int[2];
         int i, j;
         for (i = 0; i < 256; i++) {
-            j = P[0][i] & 0xFF; // compute all the matrix elements
+            j = P[0][i] & 0xFF;
             m1[0] = j;
             mX[0] = Mx_X(j) & 0xFF;
             mY[0] = Mx_Y(j) & 0xFF;
@@ -231,7 +203,7 @@ public final class Twofish {
             mX[1] = Mx_X(j) & 0xFF;
             mY[1] = Mx_Y(j) & 0xFF;
 
-            MDS[0][i] = m1[P_00] << 0 | // fill matrix w/ above elements
+            MDS[0][i] = m1[P_00] << 0 |
                     mX[P_00] << 8 |
                     mY[P_00] << 16 |
                     mY[P_00] << 24;
@@ -273,17 +245,6 @@ public final class Twofish {
         return x ^ LFSR1(x) ^ LFSR2(x);
     } // EF
 
-
-// Basic API methods
-//...........................................................................
-
-    /**
-     * Expand a user-supplied key material into a session key.
-     *
-     * @param k The 64/128/192/256-bit user-key to use.
-     * @return This cipher's round keys.
-     * @throws InvalidKeyException If the key is invalid.
-     */
     public static synchronized Object makeKey(byte[] k) throws InvalidKeyException {
         if (k == null)
             throw new InvalidKeyException("Empty key");
@@ -415,8 +376,7 @@ public final class Twofish {
         return result;
     }
 
-    public static byte[]
-    blockDecrypt(byte[] in, int inOffset, Object sessionKey) {
+    public static byte[] blockDecrypt(byte[] in, int inOffset, Object sessionKey) {
         Object[] sk = (Object[]) sessionKey; // extract S-box and session key
         int[] sBox = (int[]) sk[0];
         int[] sKey = (int[]) sk[1];
@@ -491,14 +451,6 @@ public final class Twofish {
         return (x >>> 24) & 0xFF;
     }
 
-    /**
-     * Use (12, 8) Reed-Solomon code over GF(256) to produce a key S-box
-     * 32-bit entity from two key material 32-bit entities.
-     *
-     * @param k0 1st 32-bit entity.
-     * @param k1 2nd 32-bit entity.
-     * @return Remainder polynomial generated using RS code
-     */
     private static final int RS_MDS_Encode(int k0, int k1) {
         int r = k1;
         for (int i = 0; i < 4; i++) // shift 1 byte at a time
@@ -509,13 +461,6 @@ public final class Twofish {
         return r;
     }
 
-    /*
-     * Reed-Solomon code parameters: (12, 8) reversible code:<p>
-     * <pre>
-     *   g(x) = x**4 + (a + 1/a) x**3 + a x**2 + (a + 1/a) x + 1
-     * </pre>
-     * where a = primitive root of field generator 0x14D
-     */
     private static final int RS_rem(int x) {
         int b = (x >>> 24) & 0xFF;
         int g2 = ((b << 1) ^ ((b & 0x80) != 0 ? RS_GF_FDBK : 0)) & 0xFF;
@@ -590,10 +535,6 @@ public final class Twofish {
         return result;
     }
 
-    public static int blockSize() {
-        return BLOCK_SIZE;
-    }
-
     public void FileEncrypt(String inputFile, String outputFile, byte[] kb) {
         byte[] pt = new byte[BLOCK_SIZE];
         byte[] ct;
@@ -601,12 +542,23 @@ public final class Twofish {
             Object key = makeKey(kb);
             FileOutputStream fos = new FileOutputStream(outputFile);
             FileInputStream fis = new FileInputStream(inputFile);
-            int i;
-            while (fis.read(pt, 0, BLOCK_SIZE) != -1) {
+            int i, flag = 0;
+            int size = fis.read(pt, 0, BLOCK_SIZE);
+            while (size != -1) {
+                if (size < 16) {
+                    pt[size] = (byte)255;
+                    flag = 1;
+                }
                 ct = blockEncrypt(pt, 0, key);
                 fos.write(ct);
                 i = 0;
-                while (i < BLOCK_SIZE) pt[i++] = ' ';
+                while (i < BLOCK_SIZE) pt[i++] = 0;
+                size = fis.read(pt, 0, BLOCK_SIZE);
+            }
+            if (flag == 0){
+                pt[0] = (byte)255;
+                ct = blockEncrypt(pt, 0, key);
+                fos.write(ct);
             }
             fos.flush();
         } catch (Exception e) {
@@ -615,16 +567,29 @@ public final class Twofish {
     }
 
     public void FileDecrypt(String inputFile, String outputFile, byte[] kb) {
-        byte[] pt;
+        byte[] pt = new byte[BLOCK_SIZE];
         byte[] ct = new byte[BLOCK_SIZE];
         try {
             Object key = makeKey(kb);
             FileOutputStream fos = new FileOutputStream(outputFile);
             FileInputStream fis = new FileInputStream(inputFile);
-            while (fis.read(ct, 0, BLOCK_SIZE) != -1) {
+            int size = fis.read(ct, 0, BLOCK_SIZE);
+            int cursize = 16, flag = 0;
+            while (size != -1) {
                 pt = blockDecrypt(ct, 0, key);
-                fos.write(pt);
+                size = fis.read(ct, 0, BLOCK_SIZE);
+                if (size == -1){
+                    while(pt[cursize-1] != (byte)255){
+                        cursize--;
+                        flag = 1;
+                        if (cursize == 0){
+                            break;
+                        }
+                    }
+                }
+                if (flag == 0) fos.write(pt);
             }
+            if (flag == 1) fos.write(pt, 0, cursize - 1);
             fos.flush();
         } catch (Exception e) {
             System.out.println("Decryption error!" + e.getMessage());
